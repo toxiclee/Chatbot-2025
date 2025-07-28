@@ -1,4 +1,4 @@
-# 📄 PDF Extraction Script: Full Explanation (`extraction_explained.md`)
+# 📄 PDF Extraction Script:
 
 This document explains the full content of the `1_pdf_to_md.py` script, including inline English annotations. It is used in the EPR research semantic retrieval system to convert PDF documents into structured Markdown files.
 
