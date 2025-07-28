@@ -117,7 +117,7 @@ For each `.md` file, the script computes:
 
 * Total number of chunks, characters, and tokens
 * Average and standard deviation of characters and tokens per chunk
-* Placeholder columns for evaluation metrics (`precision`, `recall`, `f1_score`)
+
 
 These are stored in a summary file:
 
