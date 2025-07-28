@@ -1,4 +1,4 @@
-# ✂️ Markdown Chunking Script 
+# ✂️ Markdown Chunking Script
 
 This document explains the chunking script used to convert extracted Markdown files into structured CSV chunks, annotated with metadata such as page number, character count, and token count. The output is used for downstream embedding and retrieval.
 
@@ -54,6 +54,45 @@ Together, these features ensure that each chunk is semantically coherent, struct
 
 ---
 
+## 🧠 Alternative: SemanticGradientSplitter Class (Token-based)
+
+An alternative implementation based on tokens rather than characters can be achieved using a semantic gradient chunker with LangChain’s `RecursiveCharacterTextSplitter`. Example:
+
+```python
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+class SemanticGradientSplitter:
+    def __init__(self,
+                 breakpoint_threshold_amount=95.0,
+                 target_chunk_size=512,
+                 min_chunk_size=100):
+        self.threshold = breakpoint_threshold_amount
+        self.target_size = target_chunk_size
+        self.min_size = min_chunk_size
+        self._token_len = fast_token_len
+
+        self.base_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=target_chunk_size,
+            chunk_overlap=int(target_chunk_size * 0.1),
+            length_function=self._token_len,
+            separators=["\n\n", "\n", ". ", "; ", " ", ""]
+        )
+
+    def split(self, text: str):
+        return self.base_splitter.split_text(text)
+```
+
+🔸 Differences compared to the character-based implementation:
+
+* Token-aware splitting
+* Recursively uses punctuation and whitespace for better semantic alignment
+* Supports overlap for context continuity
+* Does not include page number tracking by default (must be extended)
+
+This method offers higher precision for downstream language model processing, especially with English content and fine-grained control needs.
+
+---
+
 ## 📄 5. Metadata for Each Chunk
 
 Each chunk includes:
@@ -73,6 +112,7 @@ For each `.md` file, the script computes:
 
 * Total number of chunks, characters, and tokens
 * Average and standard deviation of characters and tokens per chunk
+
 
 These are stored in a summary file:
 
