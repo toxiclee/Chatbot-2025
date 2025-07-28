@@ -1,4 +1,4 @@
-# ✂️ Markdown Chunking Script 
+# ✂️ Markdown Chunking Script
 
 This document explains the chunking script used to convert extracted Markdown files into structured CSV chunks, annotated with metadata such as page number, character count, and token count. The output is used for downstream embedding and retrieval.
 
@@ -23,7 +23,7 @@ MIN_CHAR = 200
 MAX_CHAR = 800
 ```
 
-🔹 Each chunk will aim to be around 500 characters, with a lower and upper bound. Chunks smaller than `MIN_CHAR` are discarded.
+🔹 Each chunk aims for \~500 characters. Chunks smaller than `MIN_CHAR` are discarded, and those longer than `MAX_CHAR` are split.
 
 ---
 
@@ -33,7 +33,7 @@ MAX_CHAR = 800
 enc = tiktoken.get_encoding("cl100k_base")
 ```
 
-🔹 Uses the OpenAI tokenizer to compute token count per chunk using the `cl100k_base` encoding.
+🔹 Uses the OpenAI tokenizer to calculate token counts.
 
 ---
 
@@ -45,19 +45,15 @@ def split_text_into_chunks(md_text: str, pdf_name: str) -> list:
     chunks = []
     current_chunk = []
     current_char_count = 0
-    inside_table = False
     current_page = 1
     buffer = []
 
-    def flush_buffer():
-        nonlocal buffer, current_chunk, current_char_count, current_page
-        if not buffer:
+    def flush():
+        nonlocal current_chunk, current_char_count, buffer
+        text = "\n".join(buffer).strip()
+        if not text:
             return
-        section = "\n".join(buffer).strip()
-        length = len(section)
-        if length == 0:
-            return
-        if current_char_count + length > MAX_CHAR and current_chunk:
+        if current_char_count + len(text) > MAX_CHAR:
             chunks.append({
                 "pdf_name": pdf_name,
                 "page_number": current_page,
@@ -65,30 +61,20 @@ def split_text_into_chunks(md_text: str, pdf_name: str) -> list:
             })
             current_chunk.clear()
             current_char_count = 0
-        current_chunk.append(section)
-        current_char_count += length
+        current_chunk.append(text)
+        current_char_count += len(text)
         buffer.clear()
 
     for line in lines:
-        line = line.rstrip()
-        page_match = re.match(r"^## Page: (\d+)", line)
-        if page_match:
-            current_page = int(page_match.group(1))
+        if line.startswith("## Page: "):
+            match = re.match(r"## Page: (\d+)", line)
+            if match:
+                current_page = int(match.group(1))
+        buffer.append(line)
+        if re.search(r"[.!?。！？]$", line):
+            flush()
 
-        if re.match(r"^\|.*\|$", line):
-            inside_table = True
-            buffer.append(line)
-        elif inside_table and (line.startswith("|") or re.match(r"^[-| ]+$", line)):
-            buffer.append(line)
-        else:
-            if inside_table:
-                flush_buffer()
-                inside_table = False
-            buffer.append(line)
-            if re.search(r"[.!?。！？]$", line):
-                flush_buffer()
-
-    flush_buffer()
+    flush()
     if current_chunk:
         chunks.append({
             "pdf_name": pdf_name,
@@ -96,15 +82,19 @@ def split_text_into_chunks(md_text: str, pdf_name: str) -> list:
             "chunk_text": "\n".join(current_chunk).strip()
         })
 
-    return [chunk for chunk in chunks if len(chunk["chunk_text"]) >= MIN_CHAR]
+    return [c for c in chunks if len(c["chunk_text"]) >= MIN_CHAR]
 ```
 
-🔹 This function reads the input Markdown and segments it into logical chunks:
+This function implements a **gradient-style chunking strategy**. Here's how it works:
 
-* Paragraphs or sentences are added to a `buffer` until a sentence-ending character is encountered.
-* If the current chunk size exceeds `MAX_CHAR`, a new chunk is flushed.
-* Page numbers are inferred from lines like `## Page: 2`, and propagated to the corresponding chunk.
-* Tables (identified by pipe `|` symbols) are treated as indivisible blocks.
+* 📈 Instead of splitting text at fixed intervals, the script dynamically adjusts chunk size based on accumulated content.
+* 🧠 It builds a "gradient" of text by buffering lines until a natural breakpoint (like a period or question mark).
+* 🧹 Once a complete sentence or semantic unit is formed, the buffer is flushed to the current chunk.
+* 🛑 If the current chunk exceeds a target size (`MAX_CHAR`), it is finalized and a new chunk begins.
+* 📌 Page numbers are tracked using lines formatted as `## Page: N`, so each chunk can be traced back to its original source.
+* 📐 This ensures chunks are semantically meaningful, not mid-sentence, and not too short or too long.
+
+This method balances readability, coherence, and embedding efficiency—ideal for downstream LLM-based search tasks.
 
 ---
 
@@ -127,7 +117,7 @@ For each `.md` file, the script computes:
 
 * Total number of chunks, characters, and tokens
 * Average and standard deviation of characters and tokens per chunk
-
+* Placeholder columns for evaluation metrics (`precision`, `recall`, `f1_score`)
 
 These are stored in a summary file:
 
@@ -136,6 +126,7 @@ chunking_summary.csv
 ```
 
 ---
+
 
 ## ✅ Use Case
 
