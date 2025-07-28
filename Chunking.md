@@ -1,4 +1,4 @@
-# ✂️ Markdown Chunking Script
+# ✂️ Markdown Chunking Script 
 
 This document explains the chunking script used to convert extracted Markdown files into structured CSV chunks, annotated with metadata such as page number, character count, and token count. The output is used for downstream embedding and retrieval.
 
@@ -41,55 +41,70 @@ enc = tiktoken.get_encoding("cl100k_base")
 
 ```python
 def split_text_into_chunks(md_text: str, pdf_name: str) -> list:
+    lines = md_text.splitlines()
+    chunks = []
+    current_chunk = []
+    current_char_count = 0
+    inside_table = False
+    current_page = 1
+    buffer = []
+
+    def flush_buffer():
+        nonlocal buffer, current_chunk, current_char_count, current_page
+        if not buffer:
+            return
+        section = "\n".join(buffer).strip()
+        length = len(section)
+        if length == 0:
+            return
+        if current_char_count + length > MAX_CHAR and current_chunk:
+            chunks.append({
+                "pdf_name": pdf_name,
+                "page_number": current_page,
+                "chunk_text": "\n".join(current_chunk).strip()
+            })
+            current_chunk.clear()
+            current_char_count = 0
+        current_chunk.append(section)
+        current_char_count += length
+        buffer.clear()
+
+    for line in lines:
+        line = line.rstrip()
+        page_match = re.match(r"^## Page: (\d+)", line)
+        if page_match:
+            current_page = int(page_match.group(1))
+
+        if re.match(r"^\|.*\|$", line):
+            inside_table = True
+            buffer.append(line)
+        elif inside_table and (line.startswith("|") or re.match(r"^[-| ]+$", line)):
+            buffer.append(line)
+        else:
+            if inside_table:
+                flush_buffer()
+                inside_table = False
+            buffer.append(line)
+            if re.search(r"[.!?。！？]$", line):
+                flush_buffer()
+
+    flush_buffer()
+    if current_chunk:
+        chunks.append({
+            "pdf_name": pdf_name,
+            "page_number": current_page,
+            "chunk_text": "\n".join(current_chunk).strip()
+        })
+
+    return [chunk for chunk in chunks if len(chunk["chunk_text"]) >= MIN_CHAR]
 ```
 
-This function implements a **gradient-style chunking method**, characterized by:
+🔹 This function reads the input Markdown and segments it into logical chunks:
 
-* ✅ **Variable chunk sizes**: Chunks range from 200 to 800 characters, centered around 500.
-* ✅ **Semantic boundary splitting**: The script flushes content when encountering sentence-ending punctuation (like `.`, `!`, `?`, `。`, `！`, `？`) to preserve meaning.
-* ✅ **Structure preservation**: Markdown tables (`|...|` lines) are treated as atomic units and are never split mid-way.
-* ✅ **Page awareness**: `## Page: X` headers are parsed and assigned to each chunk for traceability.
-
-Together, these features ensure that each chunk is semantically coherent, structure-preserving, and page-referenced — ideal for high-quality embedding.
-
----
-
-## 🧠 Alternative: SemanticGradientSplitter Class (Token-based)
-
-An alternative implementation based on tokens rather than characters can be achieved using a semantic gradient chunker with LangChain’s `RecursiveCharacterTextSplitter`. Example:
-
-```python
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-
-class SemanticGradientSplitter:
-    def __init__(self,
-                 breakpoint_threshold_amount=95.0,
-                 target_chunk_size=512,
-                 min_chunk_size=100):
-        self.threshold = breakpoint_threshold_amount
-        self.target_size = target_chunk_size
-        self.min_size = min_chunk_size
-        self._token_len = fast_token_len
-
-        self.base_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=target_chunk_size,
-            chunk_overlap=int(target_chunk_size * 0.1),
-            length_function=self._token_len,
-            separators=["\n\n", "\n", ". ", "; ", " ", ""]
-        )
-
-    def split(self, text: str):
-        return self.base_splitter.split_text(text)
-```
-
-🔸 Differences compared to the character-based implementation:
-
-* Token-aware splitting
-* Recursively uses punctuation and whitespace for better semantic alignment
-* Supports overlap for context continuity
-* Does not include page number tracking by default (must be extended)
-
-This method offers higher precision for downstream language model processing, especially with English content and fine-grained control needs.
+* Paragraphs or sentences are added to a `buffer` until a sentence-ending character is encountered.
+* If the current chunk size exceeds `MAX_CHAR`, a new chunk is flushed.
+* Page numbers are inferred from lines like `## Page: 2`, and propagated to the corresponding chunk.
+* Tables (identified by pipe `|` symbols) are treated as indivisible blocks.
 
 ---
 
