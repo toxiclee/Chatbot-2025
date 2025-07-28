@@ -105,38 +105,6 @@ print(f"- 失败文件: {len(processor.failed_files)}")
 
 ---
 
-## ✅ Output Example
-
-For a scanned PDF:
-
-```md
-## Page: 1
-
-This is OCR text from page 1.
-
-## Page: 2
-
-This is OCR text from page 2.
-```
-
-For a digital PDF:
-
-```md
-## Page: 1
-
-Section 1.1 Introduction
-...
-
-## Page: 2
-
-Section 2.1 Methodology
-...
-```
-
----
-
-## 🧾 Summary
-
 This extraction script ensures that each PDF:
 
 * Is properly detected as scanned or not
