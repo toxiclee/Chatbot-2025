@@ -1,4 +1,4 @@
-# 📄 PDF Extraction Script Explanation (`extraction_explained.md`)
+# 📄 PDF Extraction Script
 
 This document provides a section-by-section explanation of the `1_pdf_to_md.py` script used to extract and convert PDF documents into structured Markdown with page markers, as part of a preprocessing pipeline for a semantic search chatbot.
 
