@@ -83,16 +83,6 @@ chunking_summary.csv
 
 ---
 
-## ▶️ 7. Running the Script
-
-```bash
-python chunking_script.py
-```
-
-All chunk CSVs and the summary will be saved in the output directory.
-
----
-
 ## ✅ Use Case
 
 These structured, page-aware chunks can be directly embedded and indexed in a vector database, enabling accurate and efficient semantic search in the chatbot application.
