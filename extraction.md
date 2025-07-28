@@ -26,18 +26,6 @@ SCANNED_CSV = "/gpfs/gibbs/project/yse/shared/yl2739/scanned_pdfs.csv"
 
 ---
 
-## 🏷️ Key Thresholds
-
-```python
-OCR_CHAR_THRESHOLD = 50
-SCANNED_PAGE_RATIO_THRESHOLD = 0.8
-```
-
-* A page with fewer than 50 characters and images is considered scanned.
-* If 80%+ of pages meet this criterion, the entire PDF is treated as scanned.
-
----
-
 ## 🧠 Class: `PDFProcessor`
 
 This class wraps the logic for:
@@ -49,16 +37,6 @@ This class wraps the logic for:
 
 ---
 
-### 🔍 `is_scanned_pdf()`
-
-Checks each page for:
-
-* Minimal text length
-* Presence of embedded images
-
-Returns `True` if scanned page ratio exceeds the threshold.
-
----
 
 ### 📥 `process_pdf()`
 
