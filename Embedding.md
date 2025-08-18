@@ -7,26 +7,29 @@ These embeddings can later be used for **semantic search, clustering, or Retriev
 
 ## Step-by-Step Explanation
 
-### 1. Import libraries
+## 1. Import libraries
 ```python
 import pandas as pd
 import torch
 from transformers import AutoTokenizer, AutoModel
 from tqdm import tqdm
-
-### 2. Load Model and Tokenizer
+---
+## 2. Load Model and Tokenizer
+```python
 MODEL_NAME = "Qwen/Qwen3-Embedding-0.6B"
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 model = AutoModel.from_pretrained(MODEL_NAME, trust_remote_code=True, device_map="auto")
-
+---
 ## 3.Read CSV
+```python
 csv_path = ".../combined_chunks (1).csv"
 df = pd.read_csv(csv_path)
-
+---
 ##  4. Check column existence
+```python
 if "content" not in df.columns:
     raise ValueError("CSV file missing 'content' column")
-
+---
 
 ##  5. Define embedding function
 def get_embeddings(texts, batch_size=16):
